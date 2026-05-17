@@ -10,3 +10,6 @@ wheels/
 .venv
 
 docstrings_reference.py
+
+impl_help
+notebooks/*.py
