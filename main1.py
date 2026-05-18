@@ -1,7 +1,7 @@
 # =============================================================================
-# main.py
+# main1.py
 #
-# Interactive CLI orchestrator for the Stochastic Trading Lab.
+# Minimalist CLI orchestrator for the Stochastic Trading Lab.
 # =============================================================================
 
 import sys
@@ -22,9 +22,7 @@ from part01_brownian.simulation import (
 
 # --- Async UI Loader ---
 class AsymptoticLoader:
-    """A background thread that draws a progressively slowing loading bar."""
-
-    def __init__(self, message, style="emoji"):
+    def __init__(self, message, style="ascii"):
         self.message = message
         self.style = style
         self.is_running = False
@@ -44,36 +42,29 @@ class AsymptoticLoader:
             self._draw(self.progress)
             time.sleep(delay)
             self.progress += 1
-            delay *= 1.25  # The bar slows down logarithmically
+            delay *= 1.25
 
         while self.is_running:
             self._draw(self.progress)
             time.sleep(0.1)
 
     def _draw(self, step):
-        if self.style == "emoji":
-            bar = "🟩" * step + "⬜" * (self.max_steps - step)
-            sys.stdout.write(f"\r   ⏳ {self.message} {bar}")
-        else:
-            bar = "=" * step + " " * (self.max_steps - step)
-            sys.stdout.write(f"\r  Status: {self.message} [{bar}]")
+        bar = "=" * step + " " * (self.max_steps - step)
+        sys.stdout.write(f"\r  Status: {self.message} [{bar}]")
         sys.stdout.flush()
 
     def stop(self):
         self.is_running = False
         if self.thread:
             self.thread.join()
-        # Draw 100% completion briefly
         self._draw(self.max_steps)
         time.sleep(0.1)
-        # Clear the line
         sys.stdout.write("\r" + " " * 80 + "\r")
         sys.stdout.flush()
 
 
 def run_with_loader(func, message, style, *args, **kwargs):
-    """Wraps a backend function execution with an animated loading bar."""
-    print()  # Add a newline before the loader starts
+    print()
     loader = AsymptoticLoader(message, style)
     loader.start()
     try:
@@ -85,36 +76,36 @@ def run_with_loader(func, message, style, *args, **kwargs):
 
 # --- Input Helper Functions ---
 def prompt_float(message: str, default: float) -> float:
-    val = input(f"   🔹 {message} [{default}]: ").strip()
+    val = input(f"  [?] {message} [{default}]: ").strip()
     if not val:
         return default
     try:
         return float(val)
     except ValueError:
-        print(f"   ⚠️ Invalid input, using default: {default}")
+        print(f"  [!] Invalid input, using default: {default}")
         return default
 
 
 def prompt_int(message: str, default: int) -> int:
-    val = input(f"   🔹 {message} [{default}]: ").strip()
+    val = input(f"  [?] {message} [{default}]: ").strip()
     if not val:
         return default
     try:
         return int(val)
     except ValueError:
-        print(f"   ⚠️ Invalid input, using default: {default}")
+        print(f"  [!] Invalid input, using default: {default}")
         return default
 
 
 # --- Post-Simulation Sub-Menu ---
 def post_simulation_menu(t, paths, model_name, params_dict=None):
     while True:
-        print(f"\n📊 --- Analysis Options for {model_name} ---")
-        print(" 1️⃣  Plot Sample Trajectories")
-        print(" 2️⃣  Plot Convergence Analysis (Fan Plot)")
-        print(" 0️⃣  Return to Main Menu")
+        print(f"\n--- [ ANALYSIS OPTIONS: {model_name} ] ---")
+        print("  [1] Plot Sample Trajectories")
+        print("  [2] Plot Convergence Analysis (Fan Plot)")
+        print("  [0] Return to Main Menu")
 
-        choice = input("👉 Select analysis (0-2): ").strip()
+        choice = input("  > Select analysis (0-2): ").strip()
         if choice == "0":
             break
         elif choice == "1":
@@ -122,7 +113,7 @@ def post_simulation_menu(t, paths, model_name, params_dict=None):
         elif choice == "2":
             _plot_convergence(t, paths, model_name, params_dict)
         else:
-            print("❌ Invalid choice. Please select 0, 1, or 2.")
+            print("  [!] Invalid choice. Please select 0, 1, or 2.")
 
 
 def _plot_sample(t, paths, model_name):
@@ -143,19 +134,19 @@ def _plot_sample(t, paths, model_name):
 def _plot_convergence(t, paths, model_name, p):
     if p is None:
         print(
-            "\n⚠️ Convergence bounds are not mathematically defined in this module for this process."
+            "\n  [!] Convergence bounds are not mathematically defined in this module for this process."
         )
         return
     if paths.ndim == 1 or paths.shape[0] < 10:
         print(
-            "\n⚠️ Need at least 10 paths for a meaningful Monte Carlo convergence analysis."
+            "\n  [!] Need at least 10 paths for a meaningful Monte Carlo convergence analysis."
         )
         return
 
     fig, axes = run_with_loader(
         plot_trajectories,
         "Generating Convergence Analysis...",
-        "emoji",
+        "ascii",
         T=t[-1],
         N=len(t) - 1,
         n_paths=paths.shape[0],
@@ -168,7 +159,7 @@ def _plot_convergence(t, paths, model_name, p):
 
 # --- Simulation Runners ---
 def run_bm():
-    print("\n📈 --- Standard Brownian Motion (SBM) ---")
+    print("\n--- [ MODULE: Standard Brownian Motion ] ---")
     T = prompt_float("Total time T (years)", 1.0)
     N = prompt_int("Number of steps N", 1000)
     n_paths = prompt_int("Number of paths to simulate", 500)
@@ -176,19 +167,19 @@ def run_bm():
     t, W = run_with_loader(
         simulate_bm_matrix,
         "Computing trajectories...",
-        "emoji",
+        "ascii",
         T=T,
         N=N,
         n_paths=n_paths,
     )
-    print(f"✅ Simulation complete: {n_paths} path(s), {N} steps over T={T} years.")
+    print(f"  Status: Simulation complete ({n_paths} paths, {N} steps).")
 
     params = {"mu": 0.0, "sigma": 1.0, "x0": 0.0}
     post_simulation_menu(t, W, "Standard Brownian Motion", params)
 
 
 def run_drifted_bm():
-    print("\n🚀 --- Drifted Brownian Motion ---")
+    print("\n--- [ MODULE: Drifted Brownian Motion ] ---")
     T = prompt_float("Total time T (years)", 1.0)
     N = prompt_int("Number of steps N", 1000)
     n_paths = prompt_int("Number of paths to simulate", 500)
@@ -199,7 +190,7 @@ def run_drifted_bm():
     t, B = run_with_loader(
         simulate_drifted_bm_matrix,
         "Computing trajectories...",
-        "emoji",
+        "ascii",
         T=T,
         N=N,
         x0=x0,
@@ -207,14 +198,14 @@ def run_drifted_bm():
         sigma=sigma,
         n_paths=n_paths,
     )
-    print(f"✅ Simulation complete: {n_paths} path(s), {N} steps over T={T} years.")
+    print(f"  Status: Simulation complete ({n_paths} paths, {N} steps).")
 
     params = {"mu": mu, "sigma": sigma, "x0": x0}
     post_simulation_menu(t, B, "Drifted Brownian Motion", params)
 
 
 def run_gbm():
-    print("\n💹 --- Geometric Brownian Motion (GBM) ---")
+    print("\n--- [ MODULE: Geometric Brownian Motion ] ---")
     T = prompt_float("Total time T (years)", 1.0)
     N = prompt_int("Number of steps N", 1000)
     n_paths = prompt_int("Number of paths to simulate", 500)
@@ -225,7 +216,7 @@ def run_gbm():
     t, S = run_with_loader(
         simulate_gbm,
         "Computing trajectories...",
-        "emoji",
+        "ascii",
         T=T,
         N=N,
         s0=s0,
@@ -233,26 +224,37 @@ def run_gbm():
         sigma=sigma,
         n_paths=n_paths,
     )
-    print(f"✅ Simulation complete: {n_paths} path(s), {N} steps over T={T} years.")
+    print(f"  Status: Simulation complete ({n_paths} paths, {N} steps).")
 
     post_simulation_menu(t, S, "Geometric Brownian Motion", params_dict=None)
 
 
 def main():
     while True:
-        print("\n" + "=" * 73)
-        print("   🔬 STOCHASTIC TRADING LAB - CLI : A personal project by Thibaud Ou")
-        print("=" * 73)
-        print(" 1️⃣  Simulate Standard Brownian Motion")
-        print(" 2️⃣  Simulate Drifted Brownian Motion")
-        print(" 3️⃣  Simulate Geometric Brownian Motion (GBM)")
-        print(" 4️⃣  Simulate Ornstein-Uhlenbeck Process (OU)")
-        print(" 5️⃣  Ruin Problem & Stopping Times")
-        print(" 6️⃣  Run RL Agent (Spread Trading)")
-        print(" 0️⃣  Exit")
-        print("-" * 73)
+        print(
+            "\n+-----------------------------------------------------------------------+"
+        )
+        print(
+            "|                  STOCHASTIC TRADING LAB - CLI                         |"
+        )
+        print(
+            "|              A personal project by Thibaud Ou                         |"
+        )
+        print(
+            "+-----------------------------------------------------------------------+"
+        )
+        print("  [1] Simulate Standard Brownian Motion")
+        print("  [2] Simulate Drifted Brownian Motion")
+        print("  [3] Simulate Geometric Brownian Motion (GBM)")
+        print("  [4] Simulate Ornstein-Uhlenbeck Process (OU)")
+        print("  [5] Ruin Problem & Stopping Times")
+        print("  [6] Run RL Agent (Spread Trading)")
+        print("  [0] Exit")
+        print(
+            "-------------------------------------------------------------------------"
+        )
 
-        choice = input("👉 Select an option (0-6): ").strip()
+        choice = input("  > Select an option (0-6): ").strip()
 
         if choice == "1":
             run_bm()
@@ -261,14 +263,12 @@ def main():
         elif choice == "3":
             run_gbm()
         elif choice in ["4", "5", "6"]:
-            print(
-                "\n🚧 Work in Progress : This module hasn't been implemented yet, please come back later!"
-            )
+            print("\n  [!] Notice: This module is currently under development.")
         elif choice == "0":
-            print("\n👋 Exiting the Stochastic Trading Lab. Goodbye!\n")
+            print("\n  Exiting. Goodbye.\n")
             sys.exit(0)
         else:
-            print("\n❌ Invalid choice. Please select a number between 0 and 6.")
+            print("\n  [!] Error: Invalid choice. Please input a valid module number.")
 
 
 if __name__ == "__main__":
